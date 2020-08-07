@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) Itay Grudev 2015 - 2018
+// Copyright (C) Itay Grudev 2015 - 2020
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,30 +20,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef SINGLE_APPLICATION_H
-#define SINGLE_APPLICATION_H
+#pragma once
 
-#include <QtCore/QtGlobal>
-#include <QtNetwork/QLocalSocket>
+#include "singleapplication_global.h"
+#include <QGuiApplication>
 
-#ifndef QAPPLICATION_CLASS
-  #define QAPPLICATION_CLASS QCoreApplication
-#endif
-
-#include QT_STRINGIFY(QAPPLICATION_CLASS)
-
-class SingleApplicationPrivate;
+QT_FORWARD_DECLARE_CLASS(SingleApplicationPrivate)
 
 /**
  * @brief The SingleApplication class handles multiple instances of the same
  * Application
  * @see QCoreApplication
  */
-class SingleApplication : public QAPPLICATION_CLASS
+class SINGLEAPPLICATION_EXPORT SingleApplication : public QGuiApplication
 {
     Q_OBJECT
-
-    using app_t = QAPPLICATION_CLASS;
+    Q_DISABLE_COPY_MOVE(SingleApplication)
+    Q_DECLARE_PRIVATE(SingleApplication)
 
 public:
     /**
@@ -56,13 +49,14 @@ public:
      * block will be user wide.
      * @enum
      */
-    enum Mode {
-        User                    = 1 << 0,
-        System                  = 1 << 1,
-        SecondaryNotification   = 1 << 2,
-        ExcludeAppVersion       = 1 << 3,
-        ExcludeAppPath          = 1 << 4
+    enum class Mode {
+        User = 1 << 0,
+        System = 1 << 1,
+        SecondaryNotification = 1 << 2,
+        ExcludeAppVersion = 1 << 3,
+        ExcludeAppPath = 1 << 4
     };
+    Q_ENUM(Mode)
     Q_DECLARE_FLAGS(Options, Mode)
 
     /**
@@ -85,7 +79,11 @@ public:
      * Usually 4*timeout would be the worst case (fail) scenario.
      * @see See the corresponding QAPPLICATION_CLASS constructor for reference
      */
-    explicit SingleApplication( int &argc, char *argv[], bool allowSecondary = false, Options options = Mode::User, int timeout = 1000 );
+    explicit SingleApplication(int &argc,
+                               char *argv[],
+                               bool allowSecondary = false,
+                               Options options = Mode::User,
+                               int timeout = 1000);
     ~SingleApplication() override;
 
     /**
@@ -131,17 +129,14 @@ public:
      * @note sendMessage() will return false if invoked from the primary
      * instance.
      */
-    bool sendMessage( const QByteArray &message, int timeout = 100 );
+    bool sendMessage(const QByteArray &message, int timeout = 100);
 
 Q_SIGNALS:
     void instanceStarted();
-    void receivedMessage( quint32 instanceId, QByteArray message );
+    void receivedMessage(quint32 instanceId, QByteArray message);
 
 private:
-    SingleApplicationPrivate *d_ptr;
-    Q_DECLARE_PRIVATE(SingleApplication)
+    SingleApplicationPrivate *d_ptr = nullptr;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(SingleApplication::Options)
-
-#endif // SINGLE_APPLICATION_H

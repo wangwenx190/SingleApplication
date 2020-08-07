@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) Itay Grudev 2015 - 2020
+// Copyright (C) Itay Grudev 2015 - 2020
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,45 +29,53 @@
 // version without notice, or may even be removed.
 //
 
-#ifndef SINGLEAPPLICATION_P_H
-#define SINGLEAPPLICATION_P_H
+#pragma once
 
-#include <QtCore/QSharedMemory>
-#include <QtNetwork/QLocalServer>
-#include <QtNetwork/QLocalSocket>
 #include "singleapplication.h"
 
-struct InstancesInfo {
-    bool primary;
-    quint32 secondary;
-    qint64 primaryPid;
-    quint16 checksum;
-    char primaryUser[128];
+QT_FORWARD_DECLARE_CLASS(QLocalSocket)
+QT_FORWARD_DECLARE_CLASS(QLocalServer)
+QT_FORWARD_DECLARE_CLASS(QSharedMemory)
+
+struct InstancesInfo
+{
+    bool primary = false;
+    quint32 secondary = 0;
+    qint64 primaryPid = -1;
+    quint16 checksum = 0;
+    char primaryUser[128] = {};
 };
 
-struct ConnectionInfo {
+struct ConnectionInfo
+{
     qint64 msgLen = 0;
     quint32 instanceId = 0;
     quint8 stage = 0;
 };
 
-class SingleApplicationPrivate : public QObject {
-Q_OBJECT
+class SingleApplicationPrivate : public QObject
+{
+    Q_OBJECT
+    Q_DISABLE_COPY_MOVE(SingleApplicationPrivate)
+    Q_DECLARE_PUBLIC(SingleApplication)
+
 public:
-    enum ConnectionType : quint8 {
+    enum class ConnectionType : quint8 {
         InvalidConnection = 0,
         NewInstance = 1,
         SecondaryInstance = 2,
         Reconnect = 3
     };
-    enum ConnectionStage : quint8 {
+    Q_ENUM(ConnectionType)
+
+    enum class ConnectionStage : quint8 {
         StageHeader = 0,
         StageBody = 1,
         StageConnected = 2,
     };
-    Q_DECLARE_PUBLIC(SingleApplication)
+    Q_ENUM(ConnectionStage)
 
-    SingleApplicationPrivate( SingleApplication *q_ptr );
+    explicit SingleApplicationPrivate(SingleApplication *q_ptr);
     ~SingleApplicationPrivate() override;
 
     QString getUsername();
@@ -75,26 +83,24 @@ public:
     void initializeMemoryBlock();
     void startPrimary();
     void startSecondary();
-    void connectToPrimary(int msecs, ConnectionType connectionType );
+    void connectToPrimary(int msecs, ConnectionType connectionType);
     quint16 blockChecksum();
     qint64 primaryPid();
     QString primaryUser();
     void readInitMessageHeader(QLocalSocket *socket);
     void readInitMessageBody(QLocalSocket *socket);
 
-    SingleApplication *q_ptr;
-    QSharedMemory *memory;
-    QLocalSocket *socket;
-    QLocalServer *server;
-    quint32 instanceNumber;
-    QString blockServerName;
-    SingleApplication::Options options;
-    QMap<QLocalSocket*, ConnectionInfo> connectionMap;
+    SingleApplication *q_ptr = nullptr;
+    QSharedMemory *memory = nullptr;
+    QLocalSocket *socket = nullptr;
+    QLocalServer *server = nullptr;
+    quint32 instanceNumber = -1;
+    QString blockServerName = {};
+    SingleApplication::Options options = {};
+    QMap<QLocalSocket *, ConnectionInfo> connectionMap = {};
 
 public Q_SLOTS:
     void slotConnectionEstablished();
-    void slotDataAvailable( QLocalSocket*, quint32 );
-    void slotClientConnectionClosed( QLocalSocket*, quint32 );
+    void slotDataAvailable(QLocalSocket *, quint32);
+    void slotClientConnectionClosed(QLocalSocket *, quint32);
 };
-
-#endif // SINGLEAPPLICATION_P_H

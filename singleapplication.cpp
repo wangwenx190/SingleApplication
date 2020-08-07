@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) Itay Grudev 2015 - 2020
+// Copyright (C) Itay Grudev 2015 - 2020
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,18 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <QtCore/QElapsedTimer>
-#include <QtCore/QThread>
-#include <QtCore/QByteArray>
-#include <QtCore/QSharedMemory>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-#include <QtCore/QRandomGenerator>
-#else
-#include <QtCore/QDateTime>
-#endif
-
-#include "singleapplication.h"
 #include "singleapplication_p.h"
+#include <QDebug>
+#include <QElapsedTimer>
+#include <QLocalSocket>
+#include <QSharedMemory>
+#include <QThread>
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 10, 0))
+#include <QRandomGenerator>
+#else
+#include <QDateTime>
+#endif
 
 /**
  * @brief Constructor. Checks and fires up LocalServer or closes the program
@@ -40,8 +39,9 @@
  * @param argv
  * @param {bool} allowSecondaryInstances
  */
-SingleApplication::SingleApplication( int &argc, char *argv[], bool allowSecondary, Options options, int timeout )
-    : app_t( argc, argv ), d_ptr( new SingleApplicationPrivate( this ) )
+SingleApplication::SingleApplication(
+    int &argc, char *argv[], bool allowSecondary, Options options, int timeout)
+    : QGuiApplication(argc, argv), d_ptr(new SingleApplicationPrivate(this))
 {
     Q_D(SingleApplication);
 
@@ -62,41 +62,45 @@ SingleApplication::SingleApplication( int &argc, char *argv[], bool allowSeconda
 #ifdef Q_OS_UNIX
     // By explicitly attaching it and then deleting it we make sure that the
     // memory is deleted even after the process has crashed on Unix.
-    d->memory = new QSharedMemory( d->blockServerName );
+    d->memory = new QSharedMemory(d->blockServerName);
     d->memory->attach();
     delete d->memory;
 #endif
     // Guarantee thread safe behaviour with a shared memory block.
-    d->memory = new QSharedMemory( d->blockServerName );
+    d->memory = new QSharedMemory(d->blockServerName);
 
     // Create a shared memory block
-    if( d->memory->create( sizeof( InstancesInfo ) ) ) {
+    if (d->memory->create(sizeof(InstancesInfo))) {
         // Initialize the shared memory block
         d->memory->lock();
         d->initializeMemoryBlock();
         d->memory->unlock();
     } else {
         // Attempt to attach to the memory segment
-        if( ! d->memory->attach() ) {
+        if (!d->memory->attach()) {
             qCritical() << "SingleApplication: Unable to attach to shared memory block.";
             qCritical() << d->memory->errorString();
             delete d;
-            ::exit( EXIT_FAILURE );
+            ::exit(EXIT_FAILURE);
         }
     }
 
-    auto *inst = static_cast<InstancesInfo*>( d->memory->data() );
+    auto *inst = static_cast<InstancesInfo *>(d->memory->data());
     QElapsedTimer time;
     time.start();
 
     // Make sure the shared memory block is initialised and in consistent state
-    while( true ) {
+    Q_FOREVER
+    {
         d->memory->lock();
 
-        if( d->blockChecksum() == inst->checksum ) break;
+        if (d->blockChecksum() == inst->checksum) {
+            break;
+        }
 
-        if( time.elapsed() > 5000 ) {
-            qWarning() << "SingleApplication: Shared memory block has been in an inconsistent state from more than 5s. Assuming primary instance failure.";
+        if (time.elapsed() > 5000) {
+            qWarning() << "SingleApplication: Shared memory block has been in an inconsistent "
+                          "state from more than 5s. Assuming primary instance failure.";
             d->initializeMemoryBlock();
         }
 
@@ -104,27 +108,28 @@ SingleApplication::SingleApplication( int &argc, char *argv[], bool allowSeconda
 
         // Random sleep here limits the probability of a collision between two racing apps
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-        QThread::sleep( QRandomGenerator::global()->bounded( 8u, 18u ) );
+        QThread::sleep(QRandomGenerator::global()->bounded(8u, 18u));
 #else
-        qsrand( QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max() );
-        QThread::sleep( 8 + static_cast <unsigned long>( static_cast <float>( qrand() ) / RAND_MAX * 10 ) );
+        qsrand(QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max());
+        QThread::sleep(8 + static_cast<unsigned long>(static_cast<float>(qrand()) / RAND_MAX * 10));
 #endif
     }
 
-    if( inst->primary == false) {
+    if (inst->primary == false) {
         d->startPrimary();
         d->memory->unlock();
         return;
     }
 
     // Check if another instance can be started
-    if( allowSecondary ) {
+    if (allowSecondary) {
         inst->secondary += 1;
         inst->checksum = d->blockChecksum();
         d->instanceNumber = inst->secondary;
         d->startSecondary();
-        if( d->options & Mode::SecondaryNotification ) {
-            d->connectToPrimary( timeout, SingleApplicationPrivate::SecondaryInstance );
+        if (d->options & Mode::SecondaryNotification) {
+            d->connectToPrimary(timeout,
+                                SingleApplicationPrivate::ConnectionType::SecondaryInstance);
         }
         d->memory->unlock();
         return;
@@ -132,11 +137,11 @@ SingleApplication::SingleApplication( int &argc, char *argv[], bool allowSeconda
 
     d->memory->unlock();
 
-    d->connectToPrimary( timeout, SingleApplicationPrivate::NewInstance );
+    d->connectToPrimary(timeout, SingleApplicationPrivate::ConnectionType::NewInstance);
 
     delete d;
 
-    ::exit( EXIT_SUCCESS );
+    ::exit(EXIT_SUCCESS);
 }
 
 /**
@@ -184,18 +189,20 @@ QString SingleApplication::currentUser()
     return d->getUsername();
 }
 
-bool SingleApplication::sendMessage( const QByteArray &message, int timeout )
+bool SingleApplication::sendMessage(const QByteArray &message, int timeout)
 {
     Q_D(SingleApplication);
 
     // Nobody to connect to
-    if( isPrimary() ) return false;
+    if (isPrimary()) {
+        return false;
+    }
 
     // Make sure the socket is connected
-    d->connectToPrimary( timeout,  SingleApplicationPrivate::Reconnect );
+    d->connectToPrimary(timeout, SingleApplicationPrivate::ConnectionType::Reconnect);
 
-    d->socket->write( message );
-    bool dataWritten = d->socket->waitForBytesWritten( timeout );
+    d->socket->write(message);
+    bool dataWritten = d->socket->waitForBytesWritten(timeout);
     d->socket->flush();
     return dataWritten;
 }

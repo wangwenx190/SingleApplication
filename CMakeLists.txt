@@ -1,34 +1,53 @@
-cmake_minimum_required(VERSION 3.7.0)
+cmake_minimum_required(VERSION 3.18)
 
 project(SingleApplication LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
-
-add_library(${PROJECT_NAME} STATIC
-    singleapplication.cpp
-    singleapplication_p.cpp
-)
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
-# Find dependencies
-find_package(Qt5 COMPONENTS Network REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Network)
-
-if(QAPPLICATION_CLASS STREQUAL QApplication)
-    find_package(Qt5 COMPONENTS Widgets REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Widgets)
-elseif(QAPPLICATION_CLASS STREQUAL QGuiApplication)
-    find_package(Qt5 COMPONENTS Gui REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Gui)
-else()
-    set(QAPPLICATION_CLASS QCoreApplication)
-    find_package(Qt5 COMPONENTS Core REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Core)
-endif()
+set(CMAKE_AUTORCC ON)
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE advapi32)
+    set(CMAKE_DEBUG_POSTFIX d)
+else()
+    set(CMAKE_DEBUG_POSTFIX _debug)
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC QAPPLICATION_CLASS=${QAPPLICATION_CLASS})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(Qt5 COMPONENTS Gui Network REQUIRED)
+
+set(SOURCES
+    singleapplication_global.h
+    singleapplication.h
+    singleapplication_p.h
+    singleapplication_p.cpp
+    singleapplication.cpp
+)
+
+if(WIN32 AND BUILD_SHARED_LIBS)
+    enable_language(RC)
+    list(APPEND SOURCES singleapplication.rc)
+endif()
+
+add_library(${PROJECT_NAME} ${SOURCES})
+
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC SINGLEAPPLICATION_STATIC)
+endif()
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    QT_NO_CAST_FROM_ASCII
+    QT_NO_CAST_TO_ASCII
+    SINGLEAPPLICATION_LIBRARY
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Gui Qt::Network)
+target_include_directories(${PROJECT_NAME} PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>"
+)
