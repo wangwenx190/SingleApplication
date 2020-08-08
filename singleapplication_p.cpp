@@ -36,10 +36,13 @@
 #include <QLocalSocket>
 #include <QSharedMemory>
 #ifdef Q_OS_WINDOWS
+#include <QLibrary>
 #include <qt_windows.h>
 #ifndef UNLEN
 #define UNLEN 256
 #endif
+using lpGetUserNameW = BOOL(WINAPI *)(LPWSTR, LPDWORD);
+static lpGetUserNameW m_lpGetUserNameW = nullptr;
 #endif
 #ifdef Q_OS_UNIX
 #include <pwd.h>
@@ -79,8 +82,14 @@ QString SingleApplicationPrivate::getUsername()
     wchar_t username[UNLEN + 1];
     // Specifies size of the buffer on input
     DWORD usernameLength = UNLEN + 1;
-    if (GetUserNameW(username, &usernameLength)) {
-        return QString::fromWCharArray(username);
+    if (!m_lpGetUserNameW) {
+        m_lpGetUserNameW = reinterpret_cast<lpGetUserNameW>(
+            QLibrary::resolve(QString::fromUtf8("Advapi32"), "GetUserNameW"));
+    }
+    if (m_lpGetUserNameW) {
+        if (GetUserNameW(username, &usernameLength)) {
+            return QString::fromWCharArray(username);
+        }
     }
 #if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
     return QString::fromLocal8Bit(qgetenv("USERNAME"));

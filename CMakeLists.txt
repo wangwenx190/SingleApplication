@@ -47,6 +47,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     QT_NO_CAST_TO_ASCII
     SINGLEAPPLICATION_LIBRARY
 )
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        WIN32_LEAN_AND_MEAN
+        _CRT_SECURE_NO_WARNINGS
+    )
+endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Gui Qt::Network)
 target_include_directories(${PROJECT_NAME} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>"
