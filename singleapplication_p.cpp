@@ -87,7 +87,7 @@ QString SingleApplicationPrivate::getUsername()
             QLibrary::resolve(QString::fromUtf8("Advapi32"), "GetUserNameW"));
     }
     if (m_lpGetUserNameW) {
-        if (GetUserNameW(username, &usernameLength)) {
+        if (m_lpGetUserNameW(username, &usernameLength)) {
             return QString::fromWCharArray(username);
         }
     }
