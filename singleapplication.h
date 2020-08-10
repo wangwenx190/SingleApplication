@@ -22,8 +22,12 @@
 
 #pragma once
 
+#ifndef QAPPLICATION_CLASS
+#define QAPPLICATION_CLASS QCoreApplication
+#endif
+
 #include "singleapplication_global.h"
-#include <QGuiApplication>
+#include QT_STRINGIFY(QAPPLICATION_CLASS)
 
 QT_FORWARD_DECLARE_CLASS(SingleApplicationPrivate)
 
@@ -32,7 +36,7 @@ QT_FORWARD_DECLARE_CLASS(SingleApplicationPrivate)
  * Application
  * @see QCoreApplication
  */
-class SINGLEAPPLICATION_EXPORT SingleApplication : public QGuiApplication
+class SINGLEAPPLICATION_EXPORT SingleApplication : public QAPPLICATION_CLASS
 {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(SingleApplication)

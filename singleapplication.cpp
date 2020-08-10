@@ -41,7 +41,7 @@
  */
 SingleApplication::SingleApplication(
     int &argc, char *argv[], bool allowSecondary, Options options, int timeout)
-    : QGuiApplication(argc, argv), d_ptr(new SingleApplicationPrivate(this))
+    : QAPPLICATION_CLASS(argc, argv), d_ptr(new SingleApplicationPrivate(this))
 {
     Q_D(SingleApplication);
 
