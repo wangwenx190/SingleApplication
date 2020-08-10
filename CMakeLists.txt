@@ -39,6 +39,10 @@ if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${PROJECT_NAME} PUBLIC SINGLEAPPLICATION_STATIC)
 endif()
 
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    QAPPLICATION_CLASS=QApplication
+)
+
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
@@ -46,7 +50,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     QT_NO_CAST_FROM_ASCII
     QT_NO_CAST_TO_ASCII
     SINGLEAPPLICATION_LIBRARY
-    QAPPLICATION_CLASS=QApplication
 )
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
