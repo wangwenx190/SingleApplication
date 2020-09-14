@@ -18,7 +18,7 @@ else()
     set(CMAKE_DEBUG_POSTFIX _debug)
 endif()
 
-find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+find_package(Qt5 COMPONENTS Network REQUIRED)
 
 set(SOURCES
     singleapplication_global.h
@@ -40,7 +40,7 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC
-    QAPPLICATION_CLASS=QApplication
+    QAPPLICATION_CLASS=QGuiApplication
 )
 
 if(MSVC)
@@ -57,7 +57,7 @@ if(WIN32)
         _CRT_SECURE_NO_WARNINGS
     )
 endif()
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Widgets Qt::Network)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Network)
 target_include_directories(${PROJECT_NAME} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>"
 )
