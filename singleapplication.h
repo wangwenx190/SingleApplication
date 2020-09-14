@@ -141,6 +141,7 @@ Q_SIGNALS:
 
 private:
     SingleApplicationPrivate *d_ptr = nullptr;
+    void abortSafely();
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(SingleApplication::Options)

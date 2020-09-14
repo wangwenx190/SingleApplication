@@ -32,14 +32,21 @@
 #include "singleapplication_p.h"
 #include <QCryptographicHash>
 #include <QDataStream>
+#include <QElapsedTimer>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QSharedMemory>
+#include <QThread>
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 10, 0))
+#include <QRandomGenerator>
+#else
+#include <QDateTime>
+#endif
 #ifdef Q_OS_WINDOWS
 #include <QLibrary>
 #include <qt_windows.h>
 #ifndef UNLEN
-#define UNLEN 256
+#define UNLEN 256 // Maximum user name length
 #endif
 using lpGetUserNameW = BOOL(WINAPI *)(LPWSTR, LPDWORD);
 static lpGetUserNameW m_lpGetUserNameW = nullptr;
@@ -101,9 +108,8 @@ QString SingleApplicationPrivate::getUsername()
     QString username;
     uid_t uid = geteuid();
     struct passwd *pw = getpwuid(uid);
-    if (pw) {
+    if (pw)
         username = QString::fromLocal8Bit(pw->pw_name);
-    }
     if (username.isEmpty()) {
 #if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
         username = QString::fromLocal8Bit(qgetenv("USER"));
@@ -159,6 +165,14 @@ void SingleApplicationPrivate::startPrimary()
 {
     Q_Q(SingleApplication);
 
+    // Reset the number of connections
+    auto *inst = static_cast<InstancesInfo *>(memory->data());
+
+    inst->primary = true;
+    inst->primaryPid = q->applicationPid();
+    qstrncpy(inst->primaryUser, getUsername().toUtf8().data(), sizeof(inst->primaryUser));
+    inst->checksum = blockChecksum();
+    instanceNumber = 0;
     // Successful creation means that no main process exists
     // So we start a QLocalServer to listen for connections
     QLocalServer::removeServer(blockServerName);
@@ -173,71 +187,86 @@ void SingleApplicationPrivate::startPrimary()
     }
 
     server->listen(blockServerName);
-    connect(server,
-            &QLocalServer::newConnection,
-            this,
-            &SingleApplicationPrivate::slotConnectionEstablished);
-
-    // Reset the number of connections
-    auto *inst = static_cast<InstancesInfo *>(memory->data());
-
-    inst->primary = true;
-    inst->primaryPid = q->applicationPid();
-    qstrncpy(inst->primaryUser, getUsername().toUtf8().data(), sizeof(inst->primaryUser));
-    inst->checksum = blockChecksum();
-
-    instanceNumber = 0;
+    QObject::connect(server,
+                     &QLocalServer::newConnection,
+                     this,
+                     &SingleApplicationPrivate::slotConnectionEstablished);
 }
 
-void SingleApplicationPrivate::startSecondary() {}
-
-void SingleApplicationPrivate::connectToPrimary(int msecs, ConnectionType connectionType)
+void SingleApplicationPrivate::startSecondary()
 {
+    auto *inst = static_cast<InstancesInfo *>(memory->data());
+
+    inst->secondary += 1;
+    inst->checksum = blockChecksum();
+    instanceNumber = inst->secondary;
+}
+
+bool SingleApplicationPrivate::connectToPrimary(int timeout, ConnectionType connectionType)
+{
+    QElapsedTimer time;
+    time.start();
+
     // Connect to the Local Server of the Primary Instance if not already
     // connected.
     if (socket == nullptr) {
         socket = new QLocalSocket();
     }
 
-    // If already connected - we are done;
-    if (socket->state() == QLocalSocket::ConnectedState) {
-        return;
-    }
+    if (socket->state() == QLocalSocket::ConnectedState)
+        return true;
 
-    // If not connect
-    if (socket->state() == QLocalSocket::UnconnectedState
-        || socket->state() == QLocalSocket::ClosingState) {
-        socket->connectToServer(blockServerName);
-    }
+    if (socket->state() != QLocalSocket::ConnectedState) {
+        while (true) {
+            randomSleep();
 
-    // Wait for being connected
-    if (socket->state() == QLocalSocket::ConnectingState) {
-        socket->waitForConnected(msecs);
+            if (socket->state() != QLocalSocket::ConnectingState)
+                socket->connectToServer(blockServerName);
+
+            if (socket->state() == QLocalSocket::ConnectingState) {
+                socket->waitForConnected(timeout - time.elapsed());
+            }
+
+            // If connected break out of the loop
+            if (socket->state() == QLocalSocket::ConnectedState)
+                break;
+
+            // If elapsed time since start is longer than the method timeout return
+            if (time.elapsed() >= timeout)
+                return false;
+        }
     }
 
     // Initialisation message according to the SingleApplication protocol
-    if (socket->state() == QLocalSocket::ConnectedState) {
-        // Notify the parent that a new instance had been started;
-        QByteArray initMsg;
-        QDataStream writeStream(&initMsg, QIODevice::WriteOnly);
+    QByteArray initMsg;
+    QDataStream writeStream(&initMsg, QIODevice::WriteOnly);
 
-        writeStream << blockServerName.toLatin1();
-        writeStream << static_cast<quint8>(connectionType);
-        writeStream << instanceNumber;
-        quint16 checksum = qChecksum(initMsg.constData(), static_cast<quint32>(initMsg.length()));
-        writeStream << checksum;
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
+    writeStream.setVersion(QDataStream::Qt_5_6);
+#endif
 
-        // The header indicates the message length that follows
-        QByteArray header;
-        QDataStream headerStream(&header, QIODevice::WriteOnly);
+    writeStream << blockServerName.toLatin1();
+    writeStream << static_cast<quint8>(connectionType);
+    writeStream << instanceNumber;
+    quint16 checksum = qChecksum(initMsg.constData(), static_cast<quint32>(initMsg.length()));
+    writeStream << checksum;
 
-        headerStream << static_cast<quint64>(initMsg.length());
+    // The header indicates the message length that follows
+    QByteArray header;
+    QDataStream headerStream(&header, QIODevice::WriteOnly);
 
-        socket->write(header);
-        socket->write(initMsg);
-        socket->flush();
-        socket->waitForBytesWritten(msecs);
-    }
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
+    headerStream.setVersion(QDataStream::Qt_5_6);
+#endif
+    headerStream << static_cast<quint64>(initMsg.length());
+
+    socket->write(header);
+    socket->write(initMsg);
+    socket->flush();
+    if (socket->waitForBytesWritten(timeout - time.elapsed()))
+        return true;
+
+    return false;
 }
 
 quint16 SingleApplicationPrivate::blockChecksum()
@@ -277,17 +306,17 @@ void SingleApplicationPrivate::slotConnectionEstablished()
     QLocalSocket *nextConnSocket = server->nextPendingConnection();
     connectionMap.insert(nextConnSocket, ConnectionInfo());
 
-    connect(nextConnSocket, &QLocalSocket::aboutToClose, this, [nextConnSocket, this]() {
+    QObject::connect(nextConnSocket, &QLocalSocket::aboutToClose, [nextConnSocket, this]() {
         auto &info = connectionMap[nextConnSocket];
         Q_EMIT this->slotClientConnectionClosed(nextConnSocket, info.instanceId);
     });
 
-    connect(nextConnSocket, &QLocalSocket::disconnected, this, [nextConnSocket, this]() {
+    QObject::connect(nextConnSocket, &QLocalSocket::disconnected, [nextConnSocket, this]() {
         connectionMap.remove(nextConnSocket);
         nextConnSocket->deleteLater();
     });
 
-    connect(nextConnSocket, &QLocalSocket::readyRead, this, [nextConnSocket, this]() {
+    QObject::connect(nextConnSocket, &QLocalSocket::readyRead, [nextConnSocket, this]() {
         auto &info = connectionMap[nextConnSocket];
         switch (static_cast<ConnectionStage>(info.stage)) {
         case ConnectionStage::StageHeader:
@@ -317,6 +346,10 @@ void SingleApplicationPrivate::readInitMessageHeader(QLocalSocket *sock)
 
     QDataStream headerStream(sock);
 
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
+    headerStream.setVersion(QDataStream::Qt_5_6);
+#endif
+
     // Read the header to know the message length
     quint64 msgLen = 0;
     headerStream >> msgLen;
@@ -345,6 +378,10 @@ void SingleApplicationPrivate::readInitMessageBody(QLocalSocket *sock)
     // Read the message body
     QByteArray msgBytes = sock->read(info.msgLen);
     QDataStream readStream(msgBytes);
+
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
+    readStream.setVersion(QDataStream::Qt_5_6);
+#endif
 
     // server name
     QByteArray latin1Name;
@@ -399,7 +436,16 @@ void SingleApplicationPrivate::slotDataAvailable(QLocalSocket *dataSocket, quint
 void SingleApplicationPrivate::slotClientConnectionClosed(QLocalSocket *closedSocket,
                                                           quint32 instanceId)
 {
-    if (closedSocket->bytesAvailable() > 0) {
+    if (closedSocket->bytesAvailable() > 0)
         Q_EMIT slotDataAvailable(closedSocket, instanceId);
-    }
+}
+
+void SingleApplicationPrivate::randomSleep()
+{
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 10, 0))
+    QThread::msleep(QRandomGenerator::global()->bounded(8u, 18u));
+#else
+    qsrand(QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max());
+    QThread::msleep(8 + static_cast<unsigned long>(static_cast<float>(qrand()) / RAND_MAX * 10));
+#endif
 }

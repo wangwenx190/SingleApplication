@@ -33,17 +33,17 @@
 
 #include "singleapplication.h"
 
-QT_FORWARD_DECLARE_CLASS(QLocalSocket)
-QT_FORWARD_DECLARE_CLASS(QLocalServer)
 QT_FORWARD_DECLARE_CLASS(QSharedMemory)
+QT_FORWARD_DECLARE_CLASS(QLocalServer)
+QT_FORWARD_DECLARE_CLASS(QLocalSocket)
 
 struct InstancesInfo
 {
-    bool primary = false;
-    quint32 secondary = 0;
-    qint64 primaryPid = -1;
-    quint16 checksum = 0;
-    char primaryUser[128] = {};
+    bool primary;
+    quint32 secondary;
+    qint64 primaryPid;
+    char primaryUser[128];
+    quint16 checksum; // Must be the last field
 };
 
 struct ConnectionInfo
@@ -83,12 +83,13 @@ public:
     void initializeMemoryBlock();
     void startPrimary();
     void startSecondary();
-    void connectToPrimary(int msecs, ConnectionType connectionType);
+    bool connectToPrimary(int msecs, ConnectionType connectionType);
     quint16 blockChecksum();
     qint64 primaryPid();
     QString primaryUser();
     void readInitMessageHeader(QLocalSocket *socket);
     void readInitMessageBody(QLocalSocket *socket);
+    void randomSleep();
 
     SingleApplication *q_ptr = nullptr;
     QSharedMemory *memory = nullptr;
