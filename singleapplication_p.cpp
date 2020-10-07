@@ -241,10 +241,6 @@ bool SingleApplicationPrivate::connectToPrimary(int timeout, ConnectionType conn
     QByteArray initMsg;
     QDataStream writeStream(&initMsg, QIODevice::WriteOnly);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    writeStream.setVersion(QDataStream::Qt_5_6);
-#endif
-
     writeStream << blockServerName.toLatin1();
     writeStream << static_cast<quint8>(connectionType);
     writeStream << instanceNumber;
@@ -255,18 +251,13 @@ bool SingleApplicationPrivate::connectToPrimary(int timeout, ConnectionType conn
     QByteArray header;
     QDataStream headerStream(&header, QIODevice::WriteOnly);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    headerStream.setVersion(QDataStream::Qt_5_6);
-#endif
     headerStream << static_cast<quint64>(initMsg.length());
 
     socket->write(header);
     socket->write(initMsg);
+    const bool result = socket->waitForBytesWritten(timeout - time.elapsed());
     socket->flush();
-    if (socket->waitForBytesWritten(timeout - time.elapsed()))
-        return true;
-
-    return false;
+    return result;
 }
 
 quint16 SingleApplicationPrivate::blockChecksum()
@@ -346,10 +337,6 @@ void SingleApplicationPrivate::readInitMessageHeader(QLocalSocket *sock)
 
     QDataStream headerStream(sock);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    headerStream.setVersion(QDataStream::Qt_5_6);
-#endif
-
     // Read the header to know the message length
     quint64 msgLen = 0;
     headerStream >> msgLen;
@@ -378,10 +365,6 @@ void SingleApplicationPrivate::readInitMessageBody(QLocalSocket *sock)
     // Read the message body
     QByteArray msgBytes = sock->read(info.msgLen);
     QDataStream readStream(msgBytes);
-
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    readStream.setVersion(QDataStream::Qt_5_6);
-#endif
 
     // server name
     QByteArray latin1Name;
@@ -446,6 +429,6 @@ void SingleApplicationPrivate::randomSleep()
     QThread::msleep(QRandomGenerator::global()->bounded(8u, 18u));
 #else
     qsrand(QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max());
-    QThread::msleep(8 + static_cast<unsigned long>(static_cast<float>(qrand()) / RAND_MAX * 10));
+    QThread::msleep(8 + static_cast<quint64>(static_cast<qreal>(qrand()) / RAND_MAX * 10));
 #endif
 }
