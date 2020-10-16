@@ -95,7 +95,7 @@ public:
     QSharedMemory *memory = nullptr;
     QLocalSocket *socket = nullptr;
     QLocalServer *server = nullptr;
-    quint32 instanceNumber = -1;
+    quint32 instanceNumber = 0;
     QString blockServerName = {};
     SingleApplication::Options options = {};
     QMap<QLocalSocket *, ConnectionInfo> connectionMap = {};

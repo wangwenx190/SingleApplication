@@ -224,7 +224,7 @@ bool SingleApplicationPrivate::connectToPrimary(int timeout, ConnectionType conn
                 socket->connectToServer(blockServerName);
 
             if (socket->state() == QLocalSocket::ConnectingState) {
-                socket->waitForConnected(timeout - time.elapsed());
+                socket->waitForConnected(static_cast<int>(timeout - time.elapsed()));
             }
 
             // If connected break out of the loop
@@ -255,7 +255,7 @@ bool SingleApplicationPrivate::connectToPrimary(int timeout, ConnectionType conn
 
     socket->write(header);
     socket->write(initMsg);
-    const bool result = socket->waitForBytesWritten(timeout - time.elapsed());
+    const bool result = socket->waitForBytesWritten(static_cast<int>(timeout - time.elapsed()));
     socket->flush();
     return result;
 }
