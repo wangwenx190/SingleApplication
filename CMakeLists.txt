@@ -18,7 +18,8 @@ else()
     set(CMAKE_DEBUG_POSTFIX _debug)
 endif()
 
-find_package(Qt5 COMPONENTS Gui Network REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Gui Network REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Gui Network REQUIRED)
 
 set(SOURCES
     singleapplication_global.h
@@ -61,7 +62,10 @@ if(WIN32)
         _CRT_SECURE_NO_WARNINGS
     )
 endif()
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Gui Qt::Network)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::Network
+)
 target_include_directories(${PROJECT_NAME} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>"
 )
