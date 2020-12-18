@@ -87,7 +87,8 @@ public:
                                char *argv[],
                                bool allowSecondary = false,
                                Options options = Mode::User,
-                               int timeout = 1000);
+                               int timeout = 1000,
+                               QString userData = {});
     ~SingleApplication() override;
 
     /**
@@ -134,6 +135,12 @@ public:
      * instance.
      */
     bool sendMessage(const QByteArray &message, int timeout = 100);
+
+    /**
+     * @brief Get the set user data.
+     * @returns {QStringList}
+     */
+    QStringList userData();
 
 Q_SIGNALS:
     void instanceStarted();

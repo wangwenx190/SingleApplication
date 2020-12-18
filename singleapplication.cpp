@@ -36,7 +36,7 @@
  * @param timeout Maximum time blocking functions are allowed during app load
  */
 SingleApplication::SingleApplication(
-    int &argc, char *argv[], bool allowSecondary, Options options, int timeout)
+    int &argc, char *argv[], bool allowSecondary, Options options, int timeout, QString userData)
     : QAPPLICATION_CLASS(argc, argv), d_ptr(new SingleApplicationPrivate(this))
 {
     Q_D(SingleApplication);
@@ -50,6 +50,11 @@ SingleApplication::SingleApplication(
 
     // Store the current mode of the program
     d->options = options;
+
+    // Add any unique user data
+    if (!userData.isEmpty()) {
+        d->addAppData(userData);
+    }
 
     // Generating an application ID used for identifying the shared memory
     // block and QLocalServer
@@ -265,4 +270,10 @@ void SingleApplication::abortSafely()
     qCritical() << "SingleApplication: " << d->memory->error() << d->memory->errorString();
     delete d;
     ::exit(EXIT_FAILURE);
+}
+
+QStringList SingleApplication::userData()
+{
+    Q_D(SingleApplication);
+    return d->appData();
 }

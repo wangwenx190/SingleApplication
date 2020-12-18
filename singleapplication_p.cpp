@@ -129,6 +129,10 @@ void SingleApplicationPrivate::genBlockServerName()
     appData.addData(QCoreApplication::organizationName().toUtf8());
     appData.addData(QCoreApplication::organizationDomain().toUtf8());
 
+    if (!appDataList.isEmpty()) {
+        appData.addData(appDataList.join(QLatin1String("")).toUtf8());
+    }
+
     if (!(options & SingleApplication::Mode::ExcludeAppVersion)) {
         appData.addData(QCoreApplication::applicationVersion().toUtf8());
     }
@@ -265,9 +269,11 @@ bool SingleApplicationPrivate::connectToPrimary(int msecs, ConnectionType connec
 quint16 SingleApplicationPrivate::blockChecksum() const
 {
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-    quint16 checksum = qChecksum(QByteArray(static_cast<const char*>(memory->constData()), offsetof(InstancesInfo, checksum)));
+    quint16 checksum = qChecksum(QByteArray(static_cast<const char *>(memory->constData()),
+                                            offsetof(InstancesInfo, checksum)));
 #else
-    quint16 checksum = qChecksum(static_cast<const char*>(memory->constData()), offsetof(InstancesInfo, checksum));
+    quint16 checksum = qChecksum(static_cast<const char *>(memory->constData()),
+                                 offsetof(InstancesInfo, checksum));
 #endif
     return checksum;
 }
@@ -392,9 +398,12 @@ void SingleApplicationPrivate::readInitMessageBody(QLocalSocket *sock)
     readStream >> msgChecksum;
 
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-    const quint16 actualChecksum = qChecksum(QByteArray(msgBytes, static_cast<quint32>(msgBytes.length() - sizeof(quint16))));
+    const quint16 actualChecksum = qChecksum(
+        QByteArray(msgBytes, static_cast<quint32>(msgBytes.length() - sizeof(quint16))));
 #else
-    const quint16 actualChecksum = qChecksum(msgBytes.constData(), static_cast<quint32>(msgBytes.length() - sizeof(quint16)));
+    const quint16 actualChecksum = qChecksum(msgBytes.constData(),
+                                             static_cast<quint32>(msgBytes.length()
+                                                                  - sizeof(quint16)));
 #endif
 
     bool isValid = readStream.status() == QDataStream::Ok
@@ -440,4 +449,14 @@ void SingleApplicationPrivate::randomSleep()
     qsrand(QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max());
     QThread::msleep(8 + static_cast<quint64>(static_cast<qreal>(qrand()) / RAND_MAX * 10));
 #endif
+}
+
+void SingleApplicationPrivate::addAppData(const QString &data)
+{
+    appDataList.push_back(data);
+}
+
+QStringList SingleApplicationPrivate::appData() const
+{
+    return appDataList;
 }
