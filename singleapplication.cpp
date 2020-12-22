@@ -35,8 +35,12 @@
  * @param options Optional flags to toggle specific behaviour
  * @param timeout Maximum time blocking functions are allowed during app load
  */
-SingleApplication::SingleApplication(
-    int &argc, char *argv[], bool allowSecondary, Options options, int timeout, QString userData)
+SingleApplication::SingleApplication(int &argc,
+                                     char *argv[],
+                                     bool allowSecondary,
+                                     Options options,
+                                     int timeout,
+                                     const QString &userData)
     : QAPPLICATION_CLASS(argc, argv), d_ptr(new SingleApplicationPrivate(this))
 {
     Q_D(SingleApplication);

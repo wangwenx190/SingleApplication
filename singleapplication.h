@@ -88,7 +88,7 @@ public:
                                bool allowSecondary = false,
                                Options options = Mode::User,
                                int timeout = 1000,
-                               QString userData = {});
+                               const QString &userData = {});
     ~SingleApplication() override;
 
     /**
