@@ -315,9 +315,13 @@ void SingleApplicationPrivate::slotConnectionEstablished()
         Q_EMIT this->slotClientConnectionClosed(nextConnSocket, info.instanceId);
     });
 
-    QObject::connect(nextConnSocket, &QLocalSocket::disconnected, [nextConnSocket, this]() {
+    QObject::connect(nextConnSocket,
+                     &QLocalSocket::disconnected,
+                     nextConnSocket,
+                     &QLocalSocket::deleteLater);
+
+    QObject::connect(nextConnSocket, &QLocalSocket::destroyed, [nextConnSocket, this]() {
         connectionMap.remove(nextConnSocket);
-        nextConnSocket->deleteLater();
     });
 
     QObject::connect(nextConnSocket, &QLocalSocket::readyRead, [nextConnSocket, this]() {

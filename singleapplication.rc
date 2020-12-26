@@ -40,9 +40,9 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName",      "Itay Grudev"
-            VALUE "FileDescription",  "Replacement of QtSingleApplication for Qt5 with support for instance communication."
+            VALUE "FileDescription",  "Replacement of QtSingleApplication with support for instance communication."
             VALUE "FileVersion",      "1.0.0.0"
-            VALUE "LegalCopyright",   "Copyright (C) Itay Grudev 2015 - 2020"
+            VALUE "LegalCopyright",   "Copyright © by Itay Grudev, 2015 - 2020"
             #ifdef _DEBUG
             VALUE "OriginalFilename", "SingleApplicationd.dll"
             #else
