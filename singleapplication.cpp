@@ -180,9 +180,9 @@ SingleApplication::~SingleApplication()
  * Checks if the current application instance is primary.
  * @return Returns true if the instance is primary, false otherwise.
  */
-bool SingleApplication::isPrimary()
+bool SingleApplication::isPrimary() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->server != nullptr;
 }
 
@@ -190,9 +190,9 @@ bool SingleApplication::isPrimary()
  * Checks if the current application instance is secondary.
  * @return Returns true if the instance is secondary, false otherwise.
  */
-bool SingleApplication::isSecondary()
+bool SingleApplication::isSecondary() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->server == nullptr;
 }
 
@@ -202,9 +202,9 @@ bool SingleApplication::isSecondary()
  * only incremented afterwards.
  * @return Returns a unique instance id.
  */
-quint32 SingleApplication::instanceId()
+quint32 SingleApplication::instanceId() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->instanceNumber;
 }
 
@@ -214,9 +214,9 @@ quint32 SingleApplication::instanceId()
  * specific APIs.
  * @return Returns the primary instance PID.
  */
-qint64 SingleApplication::primaryPid()
+qint64 SingleApplication::primaryPid() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->primaryPid();
 }
 
@@ -224,9 +224,9 @@ qint64 SingleApplication::primaryPid()
  * Returns the username the primary instance is running as.
  * @return Returns the username the primary instance is running as.
  */
-QString SingleApplication::primaryUser()
+QString SingleApplication::primaryUser() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->primaryUser();
 }
 
@@ -234,7 +234,7 @@ QString SingleApplication::primaryUser()
  * Returns the username the current instance is running as.
  * @return Returns the username the current instance is running as.
  */
-QString SingleApplication::currentUser()
+QString SingleApplication::currentUser() const
 {
     return SingleApplicationPrivate::getUsername();
 }
@@ -276,8 +276,8 @@ void SingleApplication::abortSafely()
     ::exit(EXIT_FAILURE);
 }
 
-QStringList SingleApplication::userData()
+QStringList SingleApplication::userData() const
 {
-    Q_D(SingleApplication);
+    Q_D(const SingleApplication);
     return d->appData();
 }
