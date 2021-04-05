@@ -130,7 +130,7 @@ void SingleApplicationPrivate::genBlockServerName()
     appData.addData(QCoreApplication::organizationDomain().toUtf8());
 
     if (!appDataList.isEmpty()) {
-        appData.addData(appDataList.join(QLatin1String("")).toUtf8());
+        appData.addData(appDataList.join(u"").toUtf8());
     }
 
     if (!(options & SingleApplication::Mode::ExcludeAppVersion)) {
@@ -189,10 +189,7 @@ void SingleApplicationPrivate::startPrimary()
     }
 
     server->listen(blockServerName);
-    QObject::connect(server,
-                     &QLocalServer::newConnection,
-                     this,
-                     &SingleApplicationPrivate::slotConnectionEstablished);
+    connect(server, &QLocalServer::newConnection, this, &SingleApplicationPrivate::slotConnectionEstablished);
 }
 
 void SingleApplicationPrivate::startSecondary()
@@ -310,21 +307,18 @@ void SingleApplicationPrivate::slotConnectionEstablished()
     QLocalSocket *nextConnSocket = server->nextPendingConnection();
     connectionMap.insert(nextConnSocket, ConnectionInfo());
 
-    QObject::connect(nextConnSocket, &QLocalSocket::aboutToClose, [nextConnSocket, this]() {
+    connect(nextConnSocket, &QLocalSocket::aboutToClose, this, [nextConnSocket, this](){
         auto &info = connectionMap[nextConnSocket];
-        Q_EMIT this->slotClientConnectionClosed(nextConnSocket, info.instanceId);
+        slotClientConnectionClosed(nextConnSocket, info.instanceId);
     });
 
-    QObject::connect(nextConnSocket,
-                     &QLocalSocket::disconnected,
-                     nextConnSocket,
-                     &QLocalSocket::deleteLater);
+    connect(nextConnSocket, &QLocalSocket::disconnected, nextConnSocket, &QLocalSocket::deleteLater);
 
-    QObject::connect(nextConnSocket, &QLocalSocket::destroyed, [nextConnSocket, this]() {
+    connect(nextConnSocket, &QLocalSocket::destroyed, this, [nextConnSocket, this](){
         connectionMap.remove(nextConnSocket);
     });
 
-    QObject::connect(nextConnSocket, &QLocalSocket::readyRead, [nextConnSocket, this]() {
+    connect(nextConnSocket, &QLocalSocket::readyRead, this, [nextConnSocket, this](){
         auto &info = connectionMap[nextConnSocket];
         switch (static_cast<ConnectionStage>(info.stage)) {
         case ConnectionStage::StageHeader:
@@ -334,7 +328,7 @@ void SingleApplicationPrivate::slotConnectionEstablished()
             readInitMessageBody(nextConnSocket);
             break;
         case ConnectionStage::StageConnected:
-            Q_EMIT this->slotDataAvailable(nextConnSocket, info.instanceId);
+            slotDataAvailable(nextConnSocket, info.instanceId);
             break;
         default:
             break;
@@ -402,16 +396,12 @@ void SingleApplicationPrivate::readInitMessageBody(QLocalSocket *sock)
     readStream >> msgChecksum;
 
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-    const quint16 actualChecksum = qChecksum(
-        QByteArray(msgBytes, static_cast<quint32>(msgBytes.length() - sizeof(quint16))));
+    const quint16 actualChecksum = qChecksum(QByteArray(msgBytes, static_cast<quint32>(msgBytes.length() - sizeof(quint16))));
 #else
-    const quint16 actualChecksum = qChecksum(msgBytes.constData(),
-                                             static_cast<quint32>(msgBytes.length()
-                                                                  - sizeof(quint16)));
+    const quint16 actualChecksum = qChecksum(msgBytes.constData(), static_cast<quint32>(msgBytes.length() - sizeof(quint16)));
 #endif
 
-    bool isValid = readStream.status() == QDataStream::Ok
-                   && QLatin1String(latin1Name) == blockServerName && msgChecksum == actualChecksum;
+    bool isValid = readStream.status() == QDataStream::Ok && QLatin1String(latin1Name) == blockServerName && msgChecksum == actualChecksum;
 
     if (!isValid) {
         sock->close();
@@ -428,7 +418,7 @@ void SingleApplicationPrivate::readInitMessageBody(QLocalSocket *sock)
     }
 
     if (sock->bytesAvailable() > 0) {
-        Q_EMIT this->slotDataAvailable(sock, instanceId);
+        slotDataAvailable(sock, instanceId);
     }
 }
 
@@ -442,7 +432,7 @@ void SingleApplicationPrivate::slotClientConnectionClosed(QLocalSocket *closedSo
                                                           quint32 instanceId)
 {
     if (closedSocket->bytesAvailable() > 0)
-        Q_EMIT slotDataAvailable(closedSocket, instanceId);
+        slotDataAvailable(closedSocket, instanceId);
 }
 
 void SingleApplicationPrivate::randomSleep()
