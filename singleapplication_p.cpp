@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (C) Itay Grudev 2015 - 2020
+// Copyright (C) Itay Grudev 2015 - 2021
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -349,13 +349,13 @@ void SingleApplicationPrivate::slotConnectionEstablished()
         auto &info = connectionMap[nextConnSocket];
         switch (static_cast<ConnectionStage>(info.stage)) {
         case ConnectionStage::StageInitHeader:
-            readMessageHeader(nextConnSocket, StageInitBody);
+            readMessageHeader(nextConnSocket, ConnectionStage::StageInitBody);
             break;
         case ConnectionStage::StageInitBody:
             readInitMessageBody(nextConnSocket);
             break;
         case ConnectionStage::StageConnectedHeader:
-            readMessageHeader(nextConnSocket, StageConnectedBody);
+            readMessageHeader(nextConnSocket, ConnectionStage::StageConnectedBody);
             break;
         case ConnectionStage::StageConnectedBody:
             slotDataAvailable(nextConnSocket, info.instanceId);
@@ -382,7 +382,7 @@ void SingleApplicationPrivate::readMessageHeader(QLocalSocket *sock, SingleAppli
     quint64 msgLen = 0;
     headerStream >> msgLen;
     ConnectionInfo &info = connectionMap[sock];
-    info.stage = static_cast<quint8>(ConnectionStage::nextStage);
+    info.stage = static_cast<quint8>(nextStage);
     info.msgLen = msgLen;
 
     writeAck(sock);
@@ -469,7 +469,7 @@ void SingleApplicationPrivate::slotDataAvailable(QLocalSocket *dataSocket, quint
     writeAck(dataSocket);
 
     ConnectionInfo &info = connectionMap[dataSocket];
-    info.stage = StageConnectedHeader;
+    info.stage = static_cast<quint8>(ConnectionStage::StageConnectedHeader);
 }
 
 void SingleApplicationPrivate::slotClientConnectionClosed(QLocalSocket *closedSocket,

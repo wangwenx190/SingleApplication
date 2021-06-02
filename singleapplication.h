@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (C) Itay Grudev 2015 - 2020
+// Copyright (C) Itay Grudev 2015 - 2021
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ QT_FORWARD_DECLARE_CLASS(SingleApplicationPrivate)
  * Application
  * @see QCoreApplication
  */
-class SINGLEAPPLICATION_EXPORT SingleApplication : public QAPPLICATION_CLASS
+class SINGLEAPPLICATION_API SingleApplication : public QAPPLICATION_CLASS
 {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(SingleApplication)
