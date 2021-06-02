@@ -257,10 +257,7 @@ bool SingleApplication::sendMessage(const QByteArray &message, int timeout)
     if (!d->connectToPrimary(timeout, SingleApplicationPrivate::ConnectionType::Reconnect))
         return false;
 
-    d->socket->write(message);
-    bool dataWritten = d->socket->waitForBytesWritten(timeout);
-    d->socket->flush();
-    return dataWritten;
+    return d->writeConfirmedMessage(timeout, message);
 }
 
 /**
