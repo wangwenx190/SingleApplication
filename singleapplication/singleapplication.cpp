@@ -66,7 +66,7 @@ static bool isProcessRunning( qint64 pid )
  * @param timeout Maximum time blocking functions are allowed during app load
  */
 SingleApplication::SingleApplication( int &argc, char *argv[], bool allowSecondary, Options options, int timeout, const QString &userData )
-    : app_t( argc, argv ), d_ptr( new SingleApplicationPrivate( this ) )
+    : SINGLEAPPLICATION_QAPP_CLASS( argc, argv ), d_ptr( new SingleApplicationPrivate( this ) )
 {
     Q_D( SingleApplication );
 

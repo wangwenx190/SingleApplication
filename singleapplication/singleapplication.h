@@ -24,14 +24,15 @@
 #ifndef SINGLE_APPLICATION_H
 #define SINGLE_APPLICATION_H
 
+#include "singleapplication_global.h"
 #include <QtCore/QtGlobal>
 #include <QtNetwork/QLocalSocket>
 
-#ifndef QAPPLICATION_CLASS
-  #define QAPPLICATION_CLASS QCoreApplication
+#ifndef SINGLEAPPLICATION_QAPP_CLASS
+#  define SINGLEAPPLICATION_QAPP_CLASS QCoreApplication
 #endif
 
-#include QT_STRINGIFY(QAPPLICATION_CLASS)
+#include QT_STRINGIFY(SINGLEAPPLICATION_QAPP_CLASS)
 
 class SingleApplicationPrivate;
 
@@ -40,11 +41,9 @@ class SingleApplicationPrivate;
  * Application
  * @see QCoreApplication
  */
-class SingleApplication : public QAPPLICATION_CLASS
+class SINGLEAPPLICATION_API SingleApplication : public SINGLEAPPLICATION_QAPP_CLASS
 {
     Q_OBJECT
-
-    using app_t = QAPPLICATION_CLASS;
 
 public:
     /**
@@ -98,7 +97,7 @@ public:
      * operations. It does not guarantee that the `SingleApplication`
      * initialisation will be completed in given time, though is a good hint.
      * Usually 4*timeout would be the worst case (fail) scenario.
-     * @see See the corresponding `QAPPLICATION_CLASS` constructor for reference
+     * @see See the corresponding `SINGLEAPPLICATION_QAPP_CLASS` constructor for reference
      */
     explicit SingleApplication( int &argc, char *argv[], bool allowSecondary = false, Options options = Mode::User, int timeout = 1000, const QString &userData = {} );
     ~SingleApplication() override;
